@@ -1,7 +1,7 @@
 resource "kubernetes_secret_v1" "api" {
   metadata {
     name      = "api"
-    namespace = "cron"
+    namespace = kubernetes_namespace_v1.cron.metadata[0].name
   }
   type = "Opaque"
 
@@ -16,7 +16,7 @@ resource "kubernetes_secret_v1" "api" {
 resource "kubernetes_secret_v1" "db_auth" {
   metadata {
     name      = "db-auth"
-    namespace = "cron"
+    namespace = kubernetes_namespace_v1.cron.metadata[0].name
   }
   type = "Opaque"
 
@@ -29,10 +29,11 @@ resource "kubernetes_secret_v1" "db_auth" {
 }
 
 resource "helm_release" "cron_db" {
-  name      = "cron-db"
-  namespace = "cron"
-  chart     = "bitnami/postgresql"
-  version   = "16.3.4"
+  name       = "cron-db"
+  namespace  = kubernetes_namespace_v1.cron.metadata[0].name
+  repository = "https://charts.bitnami.com/bitnami"
+  chart      = "postgresql"
+  version    = "16.3.4"
 
   values = [
     yamlencode({
@@ -54,7 +55,7 @@ resource "helm_release" "cron_db" {
 resource "kubernetes_config_map_v1" "api" {
   metadata {
     name      = "api"
-    namespace = "cron"
+    namespace = kubernetes_namespace_v1.cron.metadata[0].name
   }
 
   data = {
@@ -73,7 +74,7 @@ resource "kubernetes_config_map_v1" "api" {
 resource "kubernetes_deployment_v1" "api" {
   metadata {
     name      = "api"
-    namespace = "cron"
+    namespace = kubernetes_namespace_v1.cron.metadata[0].name
   }
 
   spec {
@@ -184,7 +185,7 @@ resource "kubernetes_deployment_v1" "api" {
 resource "kubernetes_service_v1" "api" {
   metadata {
     name      = "api"
-    namespace = "cron"
+    namespace = kubernetes_namespace_v1.cron.metadata[0].name
   }
 
   spec {

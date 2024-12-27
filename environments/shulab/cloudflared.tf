@@ -1,7 +1,7 @@
 resource "kubernetes_secret_v1" "cloudflared_tunnel_token" {
   metadata {
     name      = "cloudflared-tunnel-token"
-    namespace = "networking"
+    namespace = kubernetes_namespace_v1.networking.metadata[0].name
   }
   type = "Opaque"
 
@@ -15,7 +15,7 @@ resource "kubernetes_secret_v1" "cloudflared_tunnel_token" {
 resource "kubernetes_deployment_v1" "cloudflared" {
   metadata {
     name      = "cloudflared"
-    namespace = "networking"
+    namespace = kubernetes_namespace_v1.networking.metadata[0].name
   }
 
   spec {
