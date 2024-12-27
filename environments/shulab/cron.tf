@@ -13,9 +13,9 @@ resource "kubernetes_secret_v1" "api" {
   depends_on = [kubernetes_namespace_v1.cron]
 }
 
-resource "kubernetes_secret_v1" "db_auth" {
+resource "kubernetes_secret_v1" "psql_credentials" {
   metadata {
-    name      = "db-auth"
+    name      = "psql-credentials"
     namespace = kubernetes_namespace_v1.cron.metadata[0].name
   }
   type = "Opaque"
@@ -28,28 +28,27 @@ resource "kubernetes_secret_v1" "db_auth" {
   depends_on = [kubernetes_namespace_v1.cron]
 }
 
-resource "helm_release" "cron_db" {
-  name       = "cron-db"
-  namespace  = kubernetes_namespace_v1.cron.metadata[0].name
-  repository = "https://charts.bitnami.com/bitnami"
-  chart      = "postgresql"
-  version    = "16.3.4"
+resource "helm_release" "cron_psql" {
+  name      = "psql"
+  namespace = kubernetes_namespace_v1.cron.metadata[0].name
+  chart     = "oci://registry-1.docker.io/bitnamicharts/postgresql"
+  version   = "16.3.4"
 
   values = [
     yamlencode({
       auth = {
         username       = "cron"
         database       = "cron"
-        existingSecret = "db-auth"
+        existingSecret = kubernetes_secret_v1.psql_credentials.metadata[0].name
       }
     })
   ]
 
-  lifecycle {
-    prevent_destroy = true
-  }
+  # lifecycle {
+  #   prevent_destroy = true
+  # }
 
-  depends_on = [kubernetes_namespace_v1.cron, kubernetes_secret_v1.db_auth]
+  depends_on = [kubernetes_namespace_v1.cron, kubernetes_secret_v1.psql_credentials]
 }
 
 resource "kubernetes_config_map_v1" "api" {
@@ -63,12 +62,12 @@ resource "kubernetes_config_map_v1" "api" {
     PORT         = "8080"
     FRONTEND_URL = "https://cron.ushira.com"
     PG_USER      = "cron"
-    PG_URL       = "${helm_release.cron_db.name}-postgresql.${kubernetes_namespace_v1.cron.metadata[0].name}.svc.cluster.local:5432"
+    PG_URL       = "${helm_release.cron_psql.name}-postgresql.${kubernetes_namespace_v1.cron.metadata[0].name}.svc.cluster.local:5432"
     PG_DATABASE  = "cron"
     PG_SSLMODE   = "disable"
   }
 
-  depends_on = [kubernetes_namespace_v1.cron, helm_release.cron_db]
+  depends_on = [kubernetes_namespace_v1.cron, helm_release.cron_psql]
 }
 
 resource "kubernetes_deployment_v1" "api" {
@@ -120,7 +119,7 @@ resource "kubernetes_deployment_v1" "api" {
         }
 
         container {
-          name              = "cron-be"
+          name              = "api"
           image             = "ghcr.io/ushiradineth/cron-be:main"
           image_pull_policy = "IfNotPresent"
 
@@ -177,7 +176,7 @@ resource "kubernetes_deployment_v1" "api" {
   depends_on = [
     kubernetes_namespace_v1.cron,
     kubernetes_secret_v1.api,
-    helm_release.cron_db,
+    helm_release.cron_psql,
     kubernetes_config_map_v1.api
   ]
 }
