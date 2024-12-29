@@ -1,8 +1,4 @@
-variable "cloudflared_token" {
-  type        = string
-  description = "The cloudflared token to use for the tunnel."
-  sensitive   = true
-}
+# Cron Backend variables
 
 variable "cron_postgres_password" {
   type        = string
@@ -15,3 +11,46 @@ variable "cron_jwt_secret" {
   description = "The JWT secret for the cron application."
   sensitive   = true
 }
+
+# ---
+
+# Cloudflare variables
+
+variable "cloudflare_zone" {
+  description = "Cloudflare attached domain"
+  type        = string
+}
+
+variable "cloudflare_account_id" {
+  description = "Account ID for your Cloudflare account"
+  type        = string
+  sensitive   = true
+}
+
+variable "cloudflare_email" {
+  description = "Email address for your Cloudflare account"
+  type        = string
+  sensitive   = true
+}
+
+variable "cloudflare_token" {
+  description = "Cloudflare API token created at https://dash.cloudflare.com/profile/api-tokens"
+  type        = string
+  sensitive   = true
+}
+
+variable "cloudflare_zero_trust_domain" {
+  description = "<your-team-name>.cloudflareaccess.com"
+  type        = string
+}
+
+# ---
+
+# Server variables
+
+variable "server_ip" {
+  description = "IP address of the server"
+  type        = string
+}
+
+# ---

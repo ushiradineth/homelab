@@ -6,10 +6,10 @@ resource "kubernetes_secret_v1" "cloudflared_tunnel_token" {
   type = "Opaque"
 
   data = {
-    token = var.cloudflared_token
+    token = cloudflare_zero_trust_tunnel_cloudflared.shulab.tunnel_token
   }
 
-  depends_on = [kubernetes_namespace_v1.networking]
+  depends_on = [kubernetes_namespace_v1.networking, cloudflare_zero_trust_tunnel_cloudflared.shulab]
 }
 
 resource "kubernetes_deployment_v1" "cloudflared" {
@@ -58,12 +58,6 @@ resource "kubernetes_deployment_v1" "cloudflared" {
             }
           }
 
-          # QUIC doesn't work with my network, so we use HTTP/2 instead.
-          env {
-            name  = "TUNNEL_TRANSPORT_PROTOCOL"
-            value = "http2"
-          }
-
           resources {
             limits = {
               cpu    = "0.5"
@@ -91,5 +85,9 @@ resource "kubernetes_deployment_v1" "cloudflared" {
     }
   }
 
-  depends_on = [kubernetes_namespace_v1.networking, kubernetes_secret_v1.cloudflared_tunnel_token]
+  depends_on = [
+    kubernetes_namespace_v1.networking,
+    kubernetes_secret_v1.cloudflared_tunnel_token,
+    cloudflare_zero_trust_tunnel_cloudflared.shulab
+  ]
 }
