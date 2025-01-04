@@ -13,44 +13,6 @@ resource "kubernetes_secret_v1" "api" {
   depends_on = [kubernetes_namespace_v1.cron]
 }
 
-resource "kubernetes_secret_v1" "psql_credentials" {
-  metadata {
-    name      = "psql-credentials"
-    namespace = kubernetes_namespace_v1.cron.metadata[0].name
-  }
-  type = "Opaque"
-
-  data = {
-    password          = var.cron_postgres_password
-    postgres-password = var.cron_postgres_password
-  }
-
-  depends_on = [kubernetes_namespace_v1.cron]
-}
-
-resource "helm_release" "cron_psql" {
-  name      = "psql"
-  namespace = kubernetes_namespace_v1.cron.metadata[0].name
-  chart     = "oci://registry-1.docker.io/bitnamicharts/postgresql"
-  version   = "16.3.4"
-
-  values = [
-    yamlencode({
-      auth = {
-        username       = "cron"
-        database       = "cron"
-        existingSecret = kubernetes_secret_v1.psql_credentials.metadata[0].name
-      }
-    })
-  ]
-
-  # lifecycle {
-  #   prevent_destroy = true
-  # }
-
-  depends_on = [kubernetes_namespace_v1.cron, kubernetes_secret_v1.psql_credentials]
-}
-
 resource "kubernetes_config_map_v1" "api" {
   metadata {
     name      = "api"
@@ -58,13 +20,14 @@ resource "kubernetes_config_map_v1" "api" {
   }
 
   data = {
-    ENV          = "PRODUCTION"
-    PORT         = "8080"
-    FRONTEND_URL = "https://cron.ushira.com"
-    PG_USER      = "cron"
-    PG_URL       = "${helm_release.cron_psql.name}-postgresql.${kubernetes_namespace_v1.cron.metadata[0].name}.svc.cluster.local:5432"
-    PG_DATABASE  = "cron"
-    PG_SSLMODE   = "disable"
+    ENV                 = "PRODUCTION"
+    PORT                = "8080"
+    PG_USER             = "cron"
+    PG_DATABASE         = "cron"
+    PG_URL              = "${helm_release.cron_psql.name}-postgresql.${kubernetes_namespace_v1.cron.metadata[0].name}.svc.cluster.local:5432"
+    PG_SSLMODE          = "disable"
+    CORS_ENABLED        = "true"
+    CORS_ALLOWED_ORIGIN = "https://cron.ushira.com"
   }
 
   depends_on = [kubernetes_namespace_v1.cron, helm_release.cron_psql]
@@ -126,11 +89,11 @@ resource "kubernetes_deployment_v1" "api" {
           resources {
             requests = {
               cpu    = "100m"
-              memory = "100Mi"
+              memory = "512Mi"
             }
             limits = {
-              cpu    = "100m"
-              memory = "100Mi"
+              cpu    = "1000m"
+              memory = "1Gi"
             }
           }
 
