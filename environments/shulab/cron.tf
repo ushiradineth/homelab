@@ -37,6 +37,9 @@ resource "kubernetes_deployment_v1" "api" {
   metadata {
     name      = "api"
     namespace = kubernetes_namespace_v1.cron.metadata[0].name
+    annotations = {
+      "reloader.stakater.com/auto" = "true"
+    }
   }
 
   spec {
