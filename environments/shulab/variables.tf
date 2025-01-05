@@ -54,3 +54,38 @@ variable "server_ip" {
 }
 
 # ---
+
+# SMTP variables
+
+variable "smtp_host" {
+  description = "SMTP host"
+  type        = string
+}
+
+variable "smtp_port" {
+  description = "SMTP port"
+  type        = number
+}
+
+variable "smtp_username" {
+  description = "SMTP username"
+  type        = string
+}
+
+variable "smtp_password" {
+  description = "SMTP password"
+  type        = string
+  sensitive   = true
+}
+
+variable "smtp_domain" {
+  description = "SMTP domain"
+  type        = string
+}
+
+variable "smtp_to" {
+  description = "SMTP to address"
+  type        = string
+}
+
+# ---
