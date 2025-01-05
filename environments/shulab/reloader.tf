@@ -13,5 +13,7 @@ resource "helm_release" "reloader" {
       }
     })
   ]
+
+  depends_on = [kubernetes_namespace_v1.operator]
 }
 
