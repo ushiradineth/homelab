@@ -21,6 +21,13 @@ data "kubernetes_service" "grafana" {
   }
 }
 
+data "kubernetes_service" "prometheus" {
+  metadata {
+    name      = "kube-prometheus-stack-prometheus"
+    namespace = "monitoring"
+  }
+}
+
 data "cloudflare_zone" "zone" {
   name = var.cloudflare_zone
 }
@@ -199,6 +206,20 @@ resource "cloudflare_zero_trust_tunnel_route" "grafana" {
   ]
 }
 
+resource "cloudflare_zero_trust_tunnel_route" "prometheus" {
+  account_id         = var.cloudflare_account_id
+  tunnel_id          = cloudflare_zero_trust_tunnel_cloudflared.shulab.id
+  network            = "${data.kubernetes_service.prometheus.spec[0].cluster_ip}/32"
+  comment            = "Private route for Prometheus"
+  virtual_network_id = cloudflare_zero_trust_tunnel_virtual_network.shulab.id
+
+  depends_on = [
+    cloudflare_zero_trust_tunnel_virtual_network.shulab,
+    cloudflare_zero_trust_tunnel_cloudflared.shulab,
+    data.kubernetes_service.prometheus
+  ]
+}
+
 # ---
 
 # This resources allows for hostnames ending with .cluster.local to resolve
@@ -254,6 +275,11 @@ resource "cloudflare_zero_trust_split_tunnel" "include" {
   tunnels {
     address     = "${data.kubernetes_service.grafana.spec[0].cluster_ip}/32"
     description = "Grafana"
+  }
+
+  tunnels {
+    address     = "${data.kubernetes_service.prometheus.spec[0].cluster_ip}/32"
+    description = "Prometheus"
   }
 
   depends_on = [

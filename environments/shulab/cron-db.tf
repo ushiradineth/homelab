@@ -26,6 +26,16 @@ resource "helm_release" "cron_psql" {
         database       = "cron"
         existingSecret = kubernetes_secret_v1.psql_credentials.metadata[0].name
       }
+      metrics = {
+        enabled = true
+        serviceMonitor = {
+          enabled   = true
+          namespace = kubernetes_namespace_v1.monitoring.metadata[0].name
+          labels = {
+            release = local.kube_prometheus_stack.name
+          }
+        }
+      }
     })
   ]
 

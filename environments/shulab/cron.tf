@@ -1,7 +1,17 @@
+locals {
+  cron_api = {
+    labels = {
+      "app.kubernetes.io/name"      = "cron"
+      "app.kubernetes.io/component" = "api"
+    }
+  }
+}
+
 resource "kubernetes_secret_v1" "api" {
   metadata {
     name      = "api"
     namespace = kubernetes_namespace_v1.cron.metadata[0].name
+    labels    = local.cron_api.labels
   }
   type = "Opaque"
 
@@ -17,6 +27,7 @@ resource "kubernetes_config_map_v1" "api" {
   metadata {
     name      = "api"
     namespace = kubernetes_namespace_v1.cron.metadata[0].name
+    labels    = local.cron_api.labels
   }
 
   data = {
@@ -38,24 +49,24 @@ resource "kubernetes_deployment_v1" "api" {
     name      = "api"
     namespace = kubernetes_namespace_v1.cron.metadata[0].name
     annotations = {
+      "keel.sh/policy"             = "force"
+      "keel.sh/trigger"            = "poll"
+      "keel.sh/pollSchedule"       = "@every 3m"
       "reloader.stakater.com/auto" = "true"
     }
+    labels = local.cron_api.labels
   }
 
   spec {
     replicas = 1
 
     selector {
-      match_labels = {
-        app = "api"
-      }
+      match_labels = local.cron_api.labels
     }
 
     template {
       metadata {
-        labels = {
-          app = "api"
-        }
+        labels = local.cron_api.labels
       }
 
       spec {
@@ -87,7 +98,7 @@ resource "kubernetes_deployment_v1" "api" {
         container {
           name              = "api"
           image             = "ghcr.io/ushiradineth/cron-be:main"
-          image_pull_policy = "IfNotPresent"
+          image_pull_policy = "Always"
 
           resources {
             requests = {
@@ -151,12 +162,11 @@ resource "kubernetes_service_v1" "api" {
   metadata {
     name      = "api"
     namespace = kubernetes_namespace_v1.cron.metadata[0].name
+    labels    = local.cron_api.labels
   }
 
   spec {
-    selector = {
-      app = "api"
-    }
+    selector = local.cron_api.labels
 
     port {
       name        = "http-api"
@@ -166,4 +176,34 @@ resource "kubernetes_service_v1" "api" {
   }
 
   depends_on = [kubernetes_namespace_v1.cron]
+}
+
+resource "kubernetes_manifest" "cron_api_service_monitor" {
+  manifest = {
+    apiVersion = "monitoring.coreos.com/v1"
+    kind       = "ServiceMonitor"
+    metadata = {
+      name      = "cron-api"
+      namespace = kubernetes_namespace_v1.monitoring.metadata[0].name
+      labels = {
+        release = local.kube_prometheus_stack.name
+      }
+    }
+    spec = {
+      selector = {
+        matchLabels = local.cron_api.labels
+      }
+      namespaceSelector = {
+        matchNames = [kubernetes_namespace_v1.cron.metadata[0].name]
+      }
+      endpoints = [
+        {
+          port = "http-api"
+          path = "/metrics"
+        }
+      ]
+    }
+  }
+
+  depends_on = [kubernetes_namespace_v1.cron, kubernetes_namespace_v1.monitoring]
 }
